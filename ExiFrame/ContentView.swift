@@ -69,16 +69,21 @@ final class ContentViewModel: ObservableObject {
 }
 
 struct ContentView: View {
-    @ObservedObject private var viewModel = ContentViewModel()
-    @Environment(\.displayScale) private var displayScale: CGFloat
-    @State private var renderedImage = Image(uiImage: .filled(with: .purple))
+    @StateObject private var viewModel = ContentViewModel()
+    @Environment(\.displayScale) private var displayScale
     
-    @State private var cancellables = Set<AnyCancellable>()
+    private let maxWidth = UIScreen.main.bounds.width
+    
+    private var exifImage: ExifImage {
+        .init(
+            exif: viewModel.exif,
+            showFocalLengthIn35mmFilm: viewModel.showFocalLengthIn35mmFilm
+        )
+    }
 
     var body: some View {
         VStack {
-            ExifImage()
-                .environmentObject(viewModel)
+            exifImage
             
             PhotosPicker(
                 selection: $viewModel.pickedPhoto,
@@ -92,33 +97,21 @@ struct ContentView: View {
                 "35mm換算する",
                 isOn: $viewModel.showFocalLengthIn35mmFilm
             )
-            
-            ShareLink(
-                "画像をシェアする",
-                item: renderedImage,
-                preview: .init(
-                    "Share ExiFrame Image",
-                    image: renderedImage
+            if let image = exifImage
+                .frame(width: maxWidth)
+                .snapshot(scale: displayScale)
+                .map(Image.init(uiImage:)) {
+                ShareLink(
+                    "画像をシェアする",
+                    item: image,
+                    preview: .init(
+                        "Share ExiFrame Image",
+                        image: image
+                    )
                 )
-            )
-        }
-        .onChange(of: viewModel.pickedPhoto) { _ in
-            render()
-        }
-        .onChange(of: viewModel.showFocalLengthIn35mmFilm) { _ in
-            render()
+            }
         }
         .padding()
-    }
-}
-
-private extension ContentView {
-    @MainActor
-    func render() {
-        guard let image = snapshot(scale: displayScale).map(Image.init(uiImage:)) else {
-            return
-        }
-        renderedImage = image
     }
 }
 

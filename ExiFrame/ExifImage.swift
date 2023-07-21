@@ -8,13 +8,22 @@
 import SwiftUI
 
 struct ExifImage: View {
-    @EnvironmentObject private var viewModel: ContentViewModel
+    private var exif: ExifData?
+    private var showFocalLengthIn35mmFilm: Bool
     
     private let margin = CGFloat(16)
     
+    init(
+        exif: ExifData?,
+        showFocalLengthIn35mmFilm: Bool
+    ) {
+        self.exif = exif
+        self.showFocalLengthIn35mmFilm = showFocalLengthIn35mmFilm
+    }
+    
     var body: some View {
         Group {
-            VStack {
+            VStack(spacing: 4) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -24,7 +33,9 @@ struct ExifImage: View {
                         Text(cameraMaker)
                         Text(cameraModel)
                     }
+                    .foregroundColor(Color.black)
                     Text(lensModel)
+                        .foregroundColor(Color.gray)
                 }
                 HStack {
                     Text(focalLength)
@@ -32,8 +43,9 @@ struct ExifImage: View {
                     Text(shutterSpeed)
                     Text(iso)
                 }
+                .foregroundColor(Color.black)
             }
-            .foregroundColor(.init(uiColor: .systemBackground))
+            .bold()
             .padding(margin)
         }
         .background(Color.white)
@@ -42,49 +54,49 @@ struct ExifImage: View {
 
 private extension ExifImage {
     var image: UIImage {
-        viewModel.exif?.imageData.flatMap(UIImage.init(data:)) ?? .filled()
+        exif?.imageData.flatMap(UIImage.init(data:)) ?? .filled()
     }
 
     var cameraMaker: String {
-        viewModel.exif?.cameraMaker ?? "Unknown Maker"
+        exif?.cameraMaker ?? "Unknown Maker"
     }
     
     var cameraModel: String {
-        viewModel.exif?.cameraModel ?? "Unknown Camera"
+        exif?.cameraModel ?? "Unknown Camera"
     }
     
     var lensModel: String {
-        viewModel.exif?.lensModel ?? "Unknown Lens"
+        exif?.lensModel ?? "Unknown Lens"
     }
     
     var focalLength: String {
         let focalLength = {
-            if viewModel.showFocalLengthIn35mmFilm {
-                return viewModel.exif?.focalLengthIn35mmFilm ?? .zero
+            if showFocalLengthIn35mmFilm {
+                return exif?.focalLengthIn35mmFilm ?? .zero
             } else {
-                return viewModel.exif?.focalLength ?? .zero
+                return exif?.focalLength ?? .zero
             }
         }()
         return "\(focalLength)mm"
     }
     
     var fNumber: String {
-        "f/" + .init(format: "%.1f", viewModel.exif?.fNumber ?? .zero)
+        "f/" + .init(format: "%.1f", exif?.fNumber ?? .zero)
     }
     
     var shutterSpeed: String {
-        "\(viewModel.exif?.exposureTime?.fractionalExpression ?? "0")s"
+        "\(exif?.exposureTime?.fractionalExpression ?? "0")s"
     }
     
     var iso: String {
-        "ISO\(viewModel.exif?.iso ?? .zero)"
+        "ISO\(exif?.iso ?? .zero)"
     }
 }
 
 struct ExifImage_Previews: PreviewProvider {
     static var previews: some View {
-        ExifImage()
-            .environmentObject(ContentViewModel())
+        ExifImage(exif: nil, showFocalLengthIn35mmFilm: false)
+            .preferredColorScheme(.dark)
             .previewLayout(.fixed(
                 width: 375,
                 height: 375
