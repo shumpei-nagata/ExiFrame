@@ -6,6 +6,7 @@
 //
 
 import Combine
+import Photos
 import PhotosUI
 import SwiftUI
 
@@ -43,7 +44,10 @@ final class ContentViewModel: ObservableObject {
     
     private func parse() async {
         guard
-            let imageData = try? await pickedPhoto?.loadTransferable(type: Data.self),
+            let identifier = pickedPhoto?.itemIdentifier,
+            let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject,
+            let resource = PHAssetResource.assetResources(for: asset).first(where: { $0.type == .photo }),
+            let imageData = try? await loadData(from: resource),
             let parser = ImageMetadataParser(data: imageData)
         else {
             return
@@ -59,6 +63,24 @@ final class ContentViewModel: ObservableObject {
             exposureTime: parser.parse(for: \.exposureTime).map(Fraction.init(number:)),
             iso: parser.parse(for: \.isoSpeedRatings)?.first
         )
+    }
+
+    private func loadData(from resource: PHAssetResource) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            var data = Data()
+            PHAssetResourceManager.default().requestData(
+                for: resource,
+                options: nil,
+                dataReceivedHandler: { chunk in data.append(chunk) },
+                completionHandler: { error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: data)
+                    }
+                }
+            )
+        }
     }
     
     deinit {
