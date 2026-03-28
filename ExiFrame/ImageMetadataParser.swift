@@ -5,25 +5,17 @@
 //  Created by Shumpei Nagata on 2023/07/19.
 //
 
-import ImageIO
-import Foundation
+import CoreImage
 
 struct ImageMetadataParser {
     private let imageMetadataKeys = ImageMetadataKeys.shared
     private let properties: [String: Any]
-
+    
     init?(data: Data) {
-        guard
-            let source = CGImageSourceCreateWithData(data as CFData, nil),
-            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any]
-        else {
+        guard let properties = CIImage(data: data)?.properties else {
             return nil
         }
         self.properties = properties
-        if let jsonData = try? JSONSerialization.data(withJSONObject: properties, options: .prettyPrinted),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            print(jsonString)
-        }
     }
     
     func parse<T>(for keyPath: KeyPath<ImageMetadataKeys, ImageMetadataKey<T>>) -> T? {
